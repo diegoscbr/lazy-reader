@@ -1,0 +1,12 @@
+/* Lazy Reader — Floating Player Widget
+ *
+ * The player bar renders inside a Shadow DOM, so its styles live in
+ * Player._getCSS() in content/player.js. This file is the external
+ * stylesheet that Chrome injects via manifest.json for any page-level
+ * overrides or future theming needs.
+ */
+
+/* Host element reset — keep it invisible until the Shadow DOM is ready */
+#lazy-reader-player {
+  all: unset;
+}
