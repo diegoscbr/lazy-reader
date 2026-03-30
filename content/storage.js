@@ -13,13 +13,18 @@ export function loadSettings() {
   });
 }
 
+let saveTimer = null;
+
 export function saveSettings(partial) {
+  clearTimeout(saveTimer);
   return new Promise((resolve) => {
-    chrome.storage.local.set(partial, () => {
-      if (chrome.runtime.lastError) {
-        console.error('Lazy Reader: storage write failed', chrome.runtime.lastError.message);
-      }
-      resolve();
-    });
+    saveTimer = setTimeout(() => {
+      chrome.storage.local.set(partial, () => {
+        if (chrome.runtime.lastError) {
+          console.error('Lazy Reader: storage write failed', chrome.runtime.lastError.message);
+        }
+        resolve();
+      });
+    }, 300);
   });
 }

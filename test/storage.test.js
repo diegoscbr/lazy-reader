@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from '../content/storage.js';
 
 describe('storage', () => {
@@ -39,26 +39,38 @@ describe('storage', () => {
   });
 
   describe('saveSettings', () => {
-    it('writes partial settings to storage', async () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('writes partial settings to storage after debounce', async () => {
       chrome.storage.local.set.mockImplementation((items, cb) => {
         if (cb) cb();
         return Promise.resolve();
       });
-      await saveSettings({ speed: 1.5 });
+      const promise = saveSettings({ speed: 1.5 });
+      vi.advanceTimersByTime(300);
+      await promise;
       expect(chrome.storage.local.set).toHaveBeenCalledWith(
         { speed: 1.5 },
         expect.any(Function)
       );
     });
 
-    it('rejects on storage error', async () => {
+    it('logs error but resolves on storage failure', async () => {
       chrome.storage.local.set.mockImplementation((items, cb) => {
         chrome.runtime.lastError = { message: 'Quota exceeded' };
         if (cb) cb();
         chrome.runtime.lastError = null;
         return Promise.resolve();
       });
-      await expect(saveSettings({ speed: 1.5 })).resolves.not.toThrow();
+      const promise = saveSettings({ speed: 1.5 });
+      vi.advanceTimersByTime(300);
+      await expect(promise).resolves.not.toThrow();
     });
   });
 });
