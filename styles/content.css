@@ -1,0 +1,8 @@
+.lazy-reader-sentence {
+}
+
+.lazy-reader-active {
+  background-color: rgba(255, 213, 79, 0.4);
+  border-radius: 2px;
+  transition: background-color 0.15s ease;
+}
