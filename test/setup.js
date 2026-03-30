@@ -50,6 +50,6 @@ globalThis.chrome = {
     insertCSS: vi.fn(() => Promise.resolve()),
   },
   tabs: {
-    sendMessage: vi.fn(),
+    sendMessage: vi.fn(() => Promise.resolve()),
   },
 };
