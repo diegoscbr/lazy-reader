@@ -35,6 +35,26 @@ async function init() {
   player.create();
   player.updateState({ playing: false, speed: settings.speed });
 
+  // Keyboard shortcuts
+  function onKeyDown(e) {
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (document.activeElement?.isContentEditable) return;
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (playing) {
+        tts.pause();
+        playing = false;
+      } else {
+        tts.resume();
+        playing = true;
+      }
+      player.updateState({ playing });
+    }
+  }
+  document.addEventListener('keydown', onKeyDown);
+
   // Wire up player callbacks
   player.onPlayPause(() => {
     if (playing) {
@@ -101,6 +121,7 @@ async function init() {
     player.destroy();
     clearInterval(keepaliveInterval);
     window.removeEventListener('beforeunload', onPageHide);
+    document.removeEventListener('keydown', onKeyDown);
     window.__lazyReaderActive = false;
     window.__lazyReaderCleanup = null;
   }
