@@ -105,7 +105,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     });
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: ['content/content.js'],
+      files: ['dist/content.js'],
     });
   } catch (err) {
     console.error('Lazy Reader: Failed to inject scripts', err);

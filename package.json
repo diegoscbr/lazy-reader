@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "esbuild content/content.js --bundle --outfile=dist/content.js --format=iife",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "esbuild": "^0.27.4",
     "jsdom": "^29.0.1",
     "vitest": "^4.1.2"
   }
