@@ -14,6 +14,11 @@ describe('Highlighter', () => {
       highlighter.setMode('sentence');
       expect(highlighter.mode).toBe('sentence');
     });
+
+    it('accepts word mode', () => {
+      highlighter.setMode('word');
+      expect(highlighter.mode).toBe('word');
+    });
   });
 
   describe('highlightSegment', () => {
@@ -90,6 +95,74 @@ describe('Highlighter', () => {
       highlighter.advanceSentence(); // Should not crash
       const active = p.querySelector('.lazy-reader-active');
       expect(active).not.toBeNull();
+    });
+  });
+
+  describe('word mode', () => {
+    it('wraps each word in a span with lazy-reader-word class', () => {
+      document.body.innerHTML = '<p>Hello beautiful world</p>';
+      const p = document.querySelector('p');
+      const segment = {
+        type: 'prose',
+        text: 'Hello beautiful world',
+        node: p,
+        sentences: [{ text: 'Hello beautiful world', startIndex: 0 }],
+      };
+      highlighter.setMode('word');
+      highlighter.highlightSegment(segment);
+      const wordSpans = p.querySelectorAll('.lazy-reader-word');
+      expect(wordSpans.length).toBe(3);
+      expect(wordSpans[0].textContent).toBe('Hello');
+      expect(wordSpans[1].textContent).toBe('beautiful');
+      expect(wordSpans[2].textContent).toBe('world');
+    });
+
+    it('marks first word as active', () => {
+      document.body.innerHTML = '<p>Hello world</p>';
+      const p = document.querySelector('p');
+      const segment = {
+        type: 'prose',
+        text: 'Hello world',
+        node: p,
+        sentences: [{ text: 'Hello world', startIndex: 0 }],
+      };
+      highlighter.setMode('word');
+      highlighter.highlightSegment(segment);
+      const active = p.querySelector('.lazy-reader-active');
+      expect(active).not.toBeNull();
+      expect(active.textContent).toBe('Hello');
+    });
+
+    it('advances to a specific word by index', () => {
+      document.body.innerHTML = '<p>One two three four</p>';
+      const p = document.querySelector('p');
+      const segment = {
+        type: 'prose',
+        text: 'One two three four',
+        node: p,
+        sentences: [{ text: 'One two three four', startIndex: 0 }],
+      };
+      highlighter.setMode('word');
+      highlighter.highlightSegment(segment);
+      highlighter.advanceToWord(2);
+      const active = p.querySelector('.lazy-reader-active');
+      expect(active.textContent).toBe('three');
+    });
+
+    it('cleanup restores original DOM in word mode', () => {
+      document.body.innerHTML = '<p>Hello world</p>';
+      const p = document.querySelector('p');
+      const segment = {
+        type: 'prose',
+        text: 'Hello world',
+        node: p,
+        sentences: [{ text: 'Hello world', startIndex: 0 }],
+      };
+      highlighter.setMode('word');
+      highlighter.highlightSegment(segment);
+      highlighter.cleanup();
+      expect(p.querySelector('.lazy-reader-word')).toBeNull();
+      expect(p.textContent).toBe('Hello world');
     });
   });
 

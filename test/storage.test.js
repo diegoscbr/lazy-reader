@@ -12,7 +12,23 @@ describe('storage', () => {
         speed: 1.0,
         voiceId: '',
         ttsProvider: 'local',
+        apiKey: '',
+        cloudVoiceId: '',
       });
+    });
+  });
+
+  describe('cloud settings defaults', () => {
+    it('includes apiKey as empty string', () => {
+      expect(DEFAULT_SETTINGS.apiKey).toBe('');
+    });
+
+    it('includes cloudVoiceId as empty string', () => {
+      expect(DEFAULT_SETTINGS.cloudVoiceId).toBe('');
+    });
+
+    it('defaults ttsProvider to local', () => {
+      expect(DEFAULT_SETTINGS.ttsProvider).toBe('local');
     });
   });
 
@@ -35,6 +51,8 @@ describe('storage', () => {
       expect(settings.speed).toBe(2.0);
       expect(settings.voiceId).toBe('');
       expect(settings.ttsProvider).toBe('local');
+      expect(settings.apiKey).toBe('');
+      expect(settings.cloudVoiceId).toBe('');
     });
   });
 

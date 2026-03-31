@@ -161,6 +161,8 @@
       this._currentSegment = null;
       this._sentenceIndex = 0;
       this._sentenceSpans = [];
+      this._wordSpans = [];
+      this._activeWordIndex = -1;
       this._originalHTML = null;
     }
     setMode(mode) {
@@ -170,17 +172,28 @@
       this.cleanup();
       this._currentSegment = segment;
       this._sentenceIndex = 0;
+      this._activeWordIndex = -1;
       if (this.mode === "sentence") {
         this._wrapSentences(segment);
         this._activateSentence(0);
+      } else if (this.mode === "word") {
+        this._wrapWords(segment);
+        this.advanceToWord(0);
       }
     }
     advanceSentence() {
-      if (!this._currentSegment) return;
+      if (!this._currentSegment || this.mode !== "sentence") return;
       if (this._sentenceIndex >= this._sentenceSpans.length - 1) return;
       this._deactivateAll();
       this._sentenceIndex++;
       this._activateSentence(this._sentenceIndex);
+    }
+    advanceToWord(index) {
+      if (!this._currentSegment || this.mode !== "word") return;
+      if (index < 0 || index >= this._wordSpans.length) return;
+      this._deactivateAll();
+      this._activeWordIndex = index;
+      this._wordSpans[index].classList.add("lazy-reader-active");
     }
     cleanup() {
       if (!this._currentSegment) return;
@@ -191,6 +204,8 @@
       this._currentSegment = null;
       this._sentenceIndex = 0;
       this._sentenceSpans = [];
+      this._wordSpans = [];
+      this._activeWordIndex = -1;
       this._originalHTML = null;
     }
     _wrapSentences(segment) {
@@ -218,6 +233,25 @@
       node.innerHTML = html;
       this._sentenceSpans = Array.from(node.querySelectorAll(".lazy-reader-sentence"));
     }
+    _wrapWords(segment) {
+      const node = segment.node;
+      this._originalHTML = node.innerHTML;
+      this._wordSpans = [];
+      const fullText = node.textContent;
+      const parts = fullText.split(/(\s+)/);
+      let html = "";
+      let wordIndex = 0;
+      for (const part of parts) {
+        if (/^\s+$/.test(part)) {
+          html += escapeHTML(part);
+        } else if (part.length > 0) {
+          html += `<span class="lazy-reader-word" data-word="${wordIndex}">${escapeHTML(part)}</span>`;
+          wordIndex++;
+        }
+      }
+      node.innerHTML = html;
+      this._wordSpans = Array.from(node.querySelectorAll(".lazy-reader-word"));
+    }
     _activateSentence(index) {
       if (index >= 0 && index < this._sentenceSpans.length) {
         this._sentenceSpans[index].classList.add("lazy-reader-active");
@@ -225,6 +259,9 @@
     }
     _deactivateAll() {
       for (const span of this._sentenceSpans) {
+        span.classList.remove("lazy-reader-active");
+      }
+      for (const span of this._wordSpans) {
         span.classList.remove("lazy-reader-active");
       }
     }
@@ -246,7 +283,7 @@
         skipBack: null,
         speedChange: null
       };
-      this._state = { playing: false, speed: 1 };
+      this._state = { playing: false, speed: 1, provider: "local" };
     }
     create() {
       if (this._host) return;
@@ -264,6 +301,8 @@
       <button data-action="skipforward" title="Skip forward">\u23ED</button>
       <div class="lazy-reader-divider"></div>
       <div class="lazy-reader-speed" data-action="speed" title="Click to change speed">1.0x</div>
+      <div class="lazy-reader-divider"></div>
+      <span class="lazy-reader-provider" title="Local voice">LOCAL</span>
       <div class="lazy-reader-divider"></div>
       <button data-action="close" title="Close">\u2715</button>
     `;
@@ -301,6 +340,12 @@
       const speedEl = this._shadow.querySelector('[data-action="speed"]');
       if (speedEl) {
         speedEl.textContent = `${this._state.speed.toFixed(1)}x`;
+      }
+      const providerEl = this._shadow.querySelector(".lazy-reader-provider");
+      if (providerEl) {
+        const isCloud = this._state.provider === "elevenlabs";
+        providerEl.textContent = isCloud ? "CLOUD" : "LOCAL";
+        providerEl.title = isCloud ? "ElevenLabs cloud voice" : "Local voice";
       }
     }
     destroy() {
@@ -381,6 +426,12 @@
         background: rgba(255, 255, 255, 0.2);
         margin: 0 2px;
       }
+      .lazy-reader-provider {
+        padding: 0 4px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        opacity: 0.7;
+      }
     `;
     }
   };
@@ -389,7 +440,9 @@
   var DEFAULT_SETTINGS = Object.freeze({
     speed: 1,
     voiceId: "",
-    ttsProvider: "local"
+    ttsProvider: "local",
+    apiKey: "",
+    cloudVoiceId: ""
   });
   function loadSettings() {
     return new Promise((resolve) => {
@@ -432,11 +485,19 @@
     const tts = new TTSClient();
     const highlighter = new Highlighter();
     const player = new Player();
-    highlighter.setMode("sentence");
+    const isCloudConfigured = settings.ttsProvider === "elevenlabs" && Boolean(settings.apiKey) && Boolean(settings.cloudVoiceId);
+    const effectiveProvider = isCloudConfigured ? "elevenlabs" : "local";
+    highlighter.setMode(isCloudConfigured ? "word" : "sentence");
+    sendRuntimeMessage({
+      cmd: "setProvider",
+      provider: settings.ttsProvider,
+      apiKey: settings.apiKey,
+      cloudVoiceId: settings.cloudVoiceId
+    });
     let currentSegmentIndex = 0;
     let playing = false;
     player.create();
-    player.updateState({ playing: false, speed: settings.speed });
+    player.updateState({ playing: false, speed: settings.speed, provider: effectiveProvider });
     function onKeyDown(e) {
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -479,6 +540,16 @@
     tts.onEvent((msg) => {
       if (msg.event === "sentence") {
         highlighter.advanceSentence();
+      } else if (msg.event === "wordTiming") {
+        highlighter.advanceToWord(msg.wordIndex);
+      } else if (msg.event === "cloudFallback") {
+        showToast(`Cloud voice unavailable: ${msg.message}. Using local voice.`);
+        highlighter.cleanup();
+        highlighter.setMode("sentence");
+        if (currentSegmentIndex < segments.length) {
+          highlighter.highlightSegment(segments[currentSegmentIndex]);
+        }
+        player.updateState({ provider: "local" });
       } else if (msg.event === "end") {
         playing = false;
         player.updateState({ playing: false });
@@ -496,8 +567,7 @@
     });
     const keepaliveInterval = setInterval(() => {
       if (playing) {
-        chrome.runtime.sendMessage({ cmd: "keepalive" }).catch(() => {
-        });
+        sendRuntimeMessage({ cmd: "keepalive" });
       }
     }, 2e4);
     function onPageHide() {
@@ -519,7 +589,7 @@
     tts.speak(segments);
     highlighter.highlightSegment(segments[0]);
     playing = true;
-    player.updateState({ playing: true });
+    player.updateState({ playing: true, provider: effectiveProvider });
   }
   function showToast(message) {
     const toast = document.createElement("div");
@@ -532,5 +602,15 @@
   `;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 4e3);
+  }
+  function sendRuntimeMessage(message) {
+    try {
+      const result = chrome.runtime.sendMessage(message);
+      if (result && typeof result.catch === "function") {
+        void result.catch(() => {
+        });
+      }
+    } catch {
+    }
   }
 })();

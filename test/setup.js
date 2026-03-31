@@ -2,11 +2,12 @@ const storage = {};
 
 globalThis.chrome = {
   runtime: {
-    sendMessage: vi.fn(),
+    sendMessage: vi.fn(() => Promise.resolve({ ok: true })),
     onMessage: {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     },
+    getContexts: vi.fn(() => Promise.resolve([])),
     lastError: null,
   },
   storage: {
@@ -48,6 +49,10 @@ globalThis.chrome = {
   scripting: {
     executeScript: vi.fn(() => Promise.resolve()),
     insertCSS: vi.fn(() => Promise.resolve()),
+  },
+  offscreen: {
+    createDocument: vi.fn(() => Promise.resolve()),
+    closeDocument: vi.fn(() => Promise.resolve()),
   },
   tabs: {
     sendMessage: vi.fn(() => Promise.resolve()),

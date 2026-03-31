@@ -24,9 +24,20 @@ Works on GitHub READMEs, documentation sites, and most article pages. Code block
 npm test          # run tests (60 unit tests)
 npm run test:watch # watch mode
 npm run build      # rebuild dist/content.js after changes
+npm run proxy:elevenlabs # local relay for ElevenLabs browser-origin issues
 ```
 
 Source lives in `content/`, the bundled output in `dist/`. After editing any content script, run `npm run build` and reload the extension in Chrome.
+
+## ElevenLabs relay
+
+If ElevenLabs returns `401` from the extension but the same key works in `curl`, start the local relay:
+
+```bash
+npm run proxy:elevenlabs
+```
+
+The extension now prefers `http://127.0.0.1:8787` for ElevenLabs requests and falls back to direct API calls if the relay is not running.
 
 ## How it works
 

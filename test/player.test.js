@@ -21,13 +21,14 @@ describe('Player', () => {
       expect(host.shadowRoot).not.toBeNull();
     });
 
-    it('renders play/pause, skip back, skip forward, speed, and close controls', () => {
+    it('renders play/pause, skip back, skip forward, speed, provider, and close controls', () => {
       player.create();
       const shadow = document.querySelector('#lazy-reader-player').shadowRoot;
       expect(shadow.querySelector('[data-action="playpause"]')).not.toBeNull();
       expect(shadow.querySelector('[data-action="skipback"]')).not.toBeNull();
       expect(shadow.querySelector('[data-action="skipforward"]')).not.toBeNull();
       expect(shadow.querySelector('[data-action="speed"]')).not.toBeNull();
+      expect(shadow.querySelector('.lazy-reader-provider')).not.toBeNull();
       expect(shadow.querySelector('[data-action="close"]')).not.toBeNull();
     });
   });
@@ -93,6 +94,15 @@ describe('Player', () => {
       const shadow = document.querySelector('#lazy-reader-player').shadowRoot;
       const speedEl = shadow.querySelector('[data-action="speed"]');
       expect(speedEl.textContent).toContain('2.0x');
+    });
+
+    it('updates provider display', () => {
+      player.create();
+      player.updateState({ provider: 'elevenlabs' });
+      const shadow = document.querySelector('#lazy-reader-player').shadowRoot;
+      const providerEl = shadow.querySelector('.lazy-reader-provider');
+      expect(providerEl.textContent).toBe('CLOUD');
+      expect(providerEl.title).toContain('ElevenLabs');
     });
   });
 

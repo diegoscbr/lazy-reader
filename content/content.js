@@ -26,14 +26,25 @@ async function init() {
   const tts = new TTSClient();
   const highlighter = new Highlighter();
   const player = new Player();
+  const isCloudConfigured =
+    settings.ttsProvider === 'elevenlabs' &&
+    Boolean(settings.apiKey) &&
+    Boolean(settings.cloudVoiceId);
+  const effectiveProvider = isCloudConfigured ? 'elevenlabs' : 'local';
 
-  highlighter.setMode('sentence');
+  highlighter.setMode(isCloudConfigured ? 'word' : 'sentence');
+  sendRuntimeMessage({
+    cmd: 'setProvider',
+    provider: settings.ttsProvider,
+    apiKey: settings.apiKey,
+    cloudVoiceId: settings.cloudVoiceId,
+  });
 
   let currentSegmentIndex = 0;
   let playing = false;
 
   player.create();
-  player.updateState({ playing: false, speed: settings.speed });
+  player.updateState({ playing: false, speed: settings.speed, provider: effectiveProvider });
 
   // Keyboard shortcuts
   function onKeyDown(e) {
@@ -84,6 +95,16 @@ async function init() {
   tts.onEvent((msg) => {
     if (msg.event === 'sentence') {
       highlighter.advanceSentence();
+    } else if (msg.event === 'wordTiming') {
+      highlighter.advanceToWord(msg.wordIndex);
+    } else if (msg.event === 'cloudFallback') {
+      showToast(`Cloud voice unavailable: ${msg.message}. Using local voice.`);
+      highlighter.cleanup();
+      highlighter.setMode('sentence');
+      if (currentSegmentIndex < segments.length) {
+        highlighter.highlightSegment(segments[currentSegmentIndex]);
+      }
+      player.updateState({ provider: 'local' });
     } else if (msg.event === 'end') {
       playing = false;
       player.updateState({ playing: false });
@@ -104,7 +125,7 @@ async function init() {
   // Keepalive ping to prevent background worker suspension
   const keepaliveInterval = setInterval(() => {
     if (playing) {
-      chrome.runtime.sendMessage({ cmd: 'keepalive' }).catch(() => {});
+      sendRuntimeMessage({ cmd: 'keepalive' });
     }
   }, 20000);
 
@@ -132,7 +153,7 @@ async function init() {
   tts.speak(segments);
   highlighter.highlightSegment(segments[0]);
   playing = true;
-  player.updateState({ playing: true });
+  player.updateState({ playing: true, provider: effectiveProvider });
 }
 
 function showToast(message) {
@@ -146,4 +167,15 @@ function showToast(message) {
   `;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
+}
+
+function sendRuntimeMessage(message) {
+  try {
+    const result = chrome.runtime.sendMessage(message);
+    if (result && typeof result.catch === 'function') {
+      void result.catch(() => {});
+    }
+  } catch {
+    // Ignore transient extension messaging failures during page teardown/reload.
+  }
 }

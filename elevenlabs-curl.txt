@@ -1,0 +1,6 @@
+curl -X POST "https://api.elevenlabs.io/v1/text-to-speech/CwhRBWXzGAHq8TQ4Fs17" \
+  -H "xi-api-key:  sk_9df89d0498c1b7c4a6920f408eae122f543518ccc65b3d2f" \
+  -H "Content-Type: application/json" \
+  -H "Accept: audio/mpeg" \
+  --data '{"text":"Hello world","model_id":"eleven_v3"}' \
+  --output hello-world.mp3

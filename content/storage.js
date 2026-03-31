@@ -2,6 +2,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   speed: 1.0,
   voiceId: '',
   ttsProvider: 'local',
+  apiKey: '',
+  cloudVoiceId: '',
 });
 
 export function loadSettings() {

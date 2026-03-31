@@ -11,7 +11,7 @@ export class Player {
       skipBack: null,
       speedChange: null,
     };
-    this._state = { playing: false, speed: 1.0 };
+    this._state = { playing: false, speed: 1.0, provider: 'local' };
   }
 
   create() {
@@ -32,6 +32,8 @@ export class Player {
       <button data-action="skipforward" title="Skip forward">⏭</button>
       <div class="lazy-reader-divider"></div>
       <div class="lazy-reader-speed" data-action="speed" title="Click to change speed">1.0x</div>
+      <div class="lazy-reader-divider"></div>
+      <span class="lazy-reader-provider" title="Local voice">LOCAL</span>
       <div class="lazy-reader-divider"></div>
       <button data-action="close" title="Close">✕</button>
     `;
@@ -62,6 +64,12 @@ export class Player {
     const speedEl = this._shadow.querySelector('[data-action="speed"]');
     if (speedEl) {
       speedEl.textContent = `${this._state.speed.toFixed(1)}x`;
+    }
+    const providerEl = this._shadow.querySelector('.lazy-reader-provider');
+    if (providerEl) {
+      const isCloud = this._state.provider === 'elevenlabs';
+      providerEl.textContent = isCloud ? 'CLOUD' : 'LOCAL';
+      providerEl.title = isCloud ? 'ElevenLabs cloud voice' : 'Local voice';
     }
   }
 
@@ -135,6 +143,12 @@ export class Player {
         height: 16px;
         background: rgba(255, 255, 255, 0.2);
         margin: 0 2px;
+      }
+      .lazy-reader-provider {
+        padding: 0 4px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        opacity: 0.7;
       }
     `;
   }

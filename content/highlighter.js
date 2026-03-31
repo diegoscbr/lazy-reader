@@ -12,6 +12,8 @@ export class Highlighter {
     this._currentSegment = null;
     this._sentenceIndex = 0;
     this._sentenceSpans = [];
+    this._wordSpans = [];
+    this._activeWordIndex = -1;
     this._originalHTML = null;
   }
 
@@ -23,18 +25,30 @@ export class Highlighter {
     this.cleanup();
     this._currentSegment = segment;
     this._sentenceIndex = 0;
+    this._activeWordIndex = -1;
     if (this.mode === 'sentence') {
       this._wrapSentences(segment);
       this._activateSentence(0);
+    } else if (this.mode === 'word') {
+      this._wrapWords(segment);
+      this.advanceToWord(0);
     }
   }
 
   advanceSentence() {
-    if (!this._currentSegment) return;
+    if (!this._currentSegment || this.mode !== 'sentence') return;
     if (this._sentenceIndex >= this._sentenceSpans.length - 1) return;
     this._deactivateAll();
     this._sentenceIndex++;
     this._activateSentence(this._sentenceIndex);
+  }
+
+  advanceToWord(index) {
+    if (!this._currentSegment || this.mode !== 'word') return;
+    if (index < 0 || index >= this._wordSpans.length) return;
+    this._deactivateAll();
+    this._activeWordIndex = index;
+    this._wordSpans[index].classList.add('lazy-reader-active');
   }
 
   cleanup() {
@@ -46,6 +60,8 @@ export class Highlighter {
     this._currentSegment = null;
     this._sentenceIndex = 0;
     this._sentenceSpans = [];
+    this._wordSpans = [];
+    this._activeWordIndex = -1;
     this._originalHTML = null;
   }
 
@@ -76,6 +92,28 @@ export class Highlighter {
     this._sentenceSpans = Array.from(node.querySelectorAll('.lazy-reader-sentence'));
   }
 
+  _wrapWords(segment) {
+    const node = segment.node;
+    this._originalHTML = node.innerHTML;
+    this._wordSpans = [];
+    const fullText = node.textContent;
+    const parts = fullText.split(/(\s+)/);
+
+    let html = '';
+    let wordIndex = 0;
+    for (const part of parts) {
+      if (/^\s+$/.test(part)) {
+        html += escapeHTML(part);
+      } else if (part.length > 0) {
+        html += `<span class="lazy-reader-word" data-word="${wordIndex}">${escapeHTML(part)}</span>`;
+        wordIndex++;
+      }
+    }
+
+    node.innerHTML = html;
+    this._wordSpans = Array.from(node.querySelectorAll('.lazy-reader-word'));
+  }
+
   _activateSentence(index) {
     if (index >= 0 && index < this._sentenceSpans.length) {
       this._sentenceSpans[index].classList.add('lazy-reader-active');
@@ -84,6 +122,9 @@ export class Highlighter {
 
   _deactivateAll() {
     for (const span of this._sentenceSpans) {
+      span.classList.remove('lazy-reader-active');
+    }
+    for (const span of this._wordSpans) {
       span.classList.remove('lazy-reader-active');
     }
   }
